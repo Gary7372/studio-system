@@ -10,12 +10,23 @@ def get_db():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
 def get_drive():
+    # 1. Get the key from environment
+    raw_key = os.getenv("GCP_PRIVATE_KEY", "")
+    
+    # 2. Fix formatting: Replace literal '\n' characters with actual newlines
+    # and strip any accidental quotes
+    formatted_key = raw_key.replace('\\n', '\n').strip('"').strip("'")
+    
     info = {
-        "private_key": os.getenv("GCP_PRIVATE_KEY").replace('\\n', '\n'),
+        "private_key": formatted_key,
         "client_email": os.getenv("GCP_SERVICE_ACCOUNT_EMAIL"),
         "token_uri": "https://oauth2.googleapis.com/token",
     }
-    creds = service_account.Credentials.from_service_account_info(info, scopes=['https://www.googleapis.com/auth/drive'])
+    
+    creds = service_account.Credentials.from_service_account_info(
+        info, 
+        scopes=['https://www.googleapis.com/auth/drive']
+    )
     return build('drive', 'v3', credentials=creds)
 
 # --- Routes ---
