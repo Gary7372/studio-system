@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin | Gulugulu Pics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow">
+        <h1 class="text-2xl font-bold mb-6">Create Client Session</h1>
+        <div class="space-y-4">
+            <input id="name" type="text" placeholder="Client Name" class="w-full p-3 border rounded">
+            <div>
+                <label class="text-sm text-gray-500">Photo Selection Limit</label>
+                <input id="limit" type="number" value="10" class="w-full p-3 border rounded">
+            </div>
+            <button onclick="setup()" id="btn" class="w-full bg-black text-white p-3 rounded font-bold">Create & Get Link</button>
+        </div>
+        <div id="result" class="mt-6 hidden p-4 bg-blue-50 rounded break-all"></div>
+    </div>
+
+    <script>
+        async function setup() {
+            const name = document.getElementById('name').value;
+            const limit = document.getElementById('limit').value;
+            const btn = document.getElementById('btn');
+            btn.innerText = "Creating...";
+
+            const res = await fetch('/api/create-project', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, limit })
+            });
+            const data = await res.json();
+            
+            const link = `${window.location.origin}/select.html?id=${data.project_id}`;
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('result').innerHTML = `<strong>Client Link:</strong><br>${link}`;
+            btn.innerText = "Create Project";
+        }
+    </script>
+</body>
+</html>
