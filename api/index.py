@@ -9,16 +9,31 @@ app = Flask(__name__)
 def get_db():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
+import textwrap
+
 def get_drive():
-    # 1. Get the key from environment
-    raw_key = os.getenv("GCP_PRIVATE_KEY", "")
+    raw_key = os.getenv("GCP_PRIVATE_KEY", "").strip()
     
-    # 2. Fix formatting: Replace literal '\n' characters with actual newlines
-    # and strip any accidental quotes
-    formatted_key = raw_key.replace('\\n', '\n').strip('"').strip("'")
+    # 1. Clean out existing quotes and literal \n text
+    clean_key = raw_key.replace('\\n', '\n').strip('"').strip("'")
     
+    # 2. If the key is one giant line, we must rebuild the block structure
+    if "-----BEGIN PRIVATE KEY-----" in clean_key and "\n" not in clean_key.replace("-----BEGIN PRIVATE KEY-----", "").strip():
+        # Remove the header and footer temporarily to wrap the middle part
+        header = "-----BEGIN PRIVATE KEY-----"
+        footer = "-----END PRIVATE KEY-----"
+        
+        # Get just the encoded "gibberish" in the middle
+        core_body = clean_key.replace(header, "").replace(footer, "").strip()
+        
+        # Wrap the body into 64-character lines (the standard format)
+        wrapped_body = textwrap.fill(core_body, 64)
+        
+        # Re-assemble the key with proper new lines
+        clean_key = f"{header}\n{wrapped_body}\n{footer}"
+
     info = {
-        "private_key": formatted_key,
+        "private_key": clean_key,
         "client_email": os.getenv("GCP_SERVICE_ACCOUNT_EMAIL"),
         "token_uri": "https://oauth2.googleapis.com/token",
     }
