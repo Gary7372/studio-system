@@ -2,47 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GULUGULU PICS | ADMIN</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .loader { border-top-color: #000; animation: spinner 0.6s linear infinite; }
-        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
 </head>
-<body class="bg-zinc-100 p-4 md:p-8">
-
+<body class="bg-zinc-100 p-8 font-sans">
     <div class="max-w-5xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        <header class="flex justify-between items-center mb-10">
             <div>
-                <h1 class="text-4xl font-900 black italic tracking-tighter leading-none">GULUGULU PICS</h1>
-                <p class="text-[10px] text-zinc-400 font-bold tracking-widest uppercase mt-1">Studio Management System</p>
+                <h1 class="text-4xl font-black italic tracking-tighter">GULUGULU PICS</h1>
             </div>
-            
-            <div class="flex flex-wrap gap-2">
-                <button onclick="syncMaster()" id="sync-btn" class="text-[10px] bg-white border border-zinc-300 px-4 py-2 rounded-lg font-bold hover:bg-zinc-50 transition">
-                    SYNC WITH DRIVE
-                </button>
-                <button onclick="load(false)" id="tab-active" class="text-[10px] font-bold px-4 py-2 bg-black text-white rounded-lg shadow-md transition">
-                    ACTIVE SHOOTS
-                </button>
-                <button onclick="load(true)" id="tab-vault" class="text-[10px] text-zinc-400 font-bold px-4 py-2 hover:text-black transition">
-                    ARCHIVE VAULT
-                </button>
-                <button onclick="createProject()" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-black shadow-lg hover:bg-blue-700 transition">
-                    + NEW SHOOT
-                </button>
+            <div class="flex gap-2">
+                <button onclick="load(false)" id="tab-active" class="text-xs font-bold px-4 py-2 bg-black text-white rounded-lg">ACTIVE</button>
+                <button onclick="load(true)" id="tab-vault" class="text-xs text-zinc-400 font-bold px-4 py-2 hover:text-black">VAULT</button>
+                <button onclick="createProject()" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-black ml-4">+ NEW SHOOT</button>
             </div>
         </header>
 
-        <div id="projectGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            </div>
-
-        <div id="emptyState" class="hidden text-center py-20">
-            <p class="text-zinc-400 font-medium">No projects found. Create one or sync with Drive.</p>
-        </div>
+        <div id="projectGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
     <script>
@@ -50,130 +26,75 @@
 
         async function load(archived = false) {
             currentViewIsArchived = archived;
-            const grid = document.getElementById('projectGrid');
-            const empty = document.getElementById('emptyState');
-            
-            // Update Tab UI
-            document.getElementById('tab-active').className = !archived ? "text-[10px] font-bold px-4 py-2 bg-black text-white rounded-lg shadow-md" : "text-[10px] text-zinc-400 font-bold px-4 py-2 hover:text-black";
-            document.getElementById('tab-vault').className = archived ? "text-[10px] font-bold px-4 py-2 bg-black text-white rounded-lg shadow-md" : "text-[10px] text-zinc-400 font-bold px-4 py-2 hover:text-black";
+            document.getElementById('tab-active').className = !archived ? "text-xs font-bold px-4 py-2 bg-black text-white rounded-lg" : "text-xs text-zinc-400 font-bold px-4 py-2";
+            document.getElementById('tab-vault').className = archived ? "text-xs font-bold px-4 py-2 bg-black text-white rounded-lg" : "text-xs text-zinc-400 font-bold px-4 py-2";
 
-            try {
-                const res = await fetch(`/api/list-projects?archived=${archived}`);
-                const data = await res.json();
+            const res = await fetch(`/api/list-projects?archived=${archived}`);
+            const data = await res.json();
 
-                if (data.length === 0) {
-                    grid.innerHTML = '';
-                    empty.classList.remove('hidden');
-                    return;
-                }
-
-                empty.classList.add('hidden');
-                grid.innerHTML = data.map(p => `
-                    <div class="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-300 group">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h2 class="text-lg font-black uppercase leading-tight">${p.name}</h2>
-                                <span class="text-[9px] bg-zinc-100 px-2 py-0.5 rounded text-zinc-500 font-bold">${p.status.replace('_', ' ')}</span>
-                            </div>
-                            <button onclick="toggleArchive('${p.id}', ${!archived})" class="text-[10px] text-zinc-300 font-black hover:text-orange-500 transition">
-                                ${archived ? 'RESTORE' : 'ARCHIVE'}
-                            </button>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 mb-6">
-                            <div class="space-y-1">
-                                <input type="file" id="raw_${p.id}" multiple class="hidden" onchange="handleUpload('${p.id}','${p.folder}', false)">
-                                <button onclick="document.getElementById('raw_${p.id}').click()" class="w-full bg-zinc-50 border border-zinc-200 text-[10px] py-2.5 rounded-xl font-black group-hover:bg-white transition">
-                                    UPLOAD RAW
-                                </button>
-                                <button onclick="syncProjectFiles('${p.id}','${p.folder}', false)" class="w-full text-[8px] text-zinc-400 font-bold hover:text-black italic">↻ Sync Raws</button>
-                            </div>
-                            <div class="space-y-1">
-                                <input type="file" id="edit_${p.id}" multiple class="hidden" onchange="handleUpload('${p.id}','${p.folder}', true)">
-                                <button onclick="document.getElementById('edit_${p.id}').click()" class="w-full bg-zinc-900 text-white text-[10px] py-2.5 rounded-xl font-black shadow-lg shadow-zinc-200">
-                                    UPLOAD EDITS
-                                </button>
-                                <button onclick="syncProjectFiles('${p.id}','${p.folder}', true)" class="w-full text-[8px] text-zinc-400 font-bold hover:text-black italic">↻ Sync Edits</button>
-                            </div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <p class="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">Client Selection Link</p>
-                            <div class="flex items-center gap-2 bg-zinc-50 p-3 rounded-xl border border-zinc-100 group-hover:bg-white transition">
-                                <code class="text-[9px] text-blue-600 font-mono truncate flex-1">${window.location.origin}/select.html?s=${p.secret}</code>
-                                <button onclick="copyLink('${window.location.origin}/select.html?s=${p.secret}')" class="text-[9px] font-bold text-zinc-400 hover:text-black">COPY</button>
-                            </div>
-                        </div>
+            document.getElementById('projectGrid').innerHTML = data.map(p => `
+                <div class="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm relative">
+                    <button onclick="toggleArchive('${p.id}', ${!archived})" class="absolute top-4 right-4 text-[10px] text-zinc-300 font-black hover:text-orange-500">${archived ? 'RESTORE' : 'ARCHIVE'}</button>
+                    
+                    <h2 class="text-lg font-black uppercase leading-tight w-3/4 truncate">${p.name}</h2>
+                    
+                    <div class="mt-4 mb-6 bg-zinc-50 p-3 rounded-lg flex justify-between items-center border border-zinc-100">
+                        <span class="text-[10px] font-bold text-zinc-500 uppercase">Selections</span>
+                        <span class="text-sm font-black ${p.selected >= p.limit ? 'text-green-600' : 'text-blue-600'}">${p.selected} / ${p.limit}</span>
                     </div>
-                `).join('');
-            } catch (err) {
-                console.error("Failed to load projects", err);
-            }
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <button onclick="syncProjectFiles('${p.id}','${p.folder}', false)" class="bg-zinc-100 border border-zinc-200 text-[10px] py-2.5 rounded-xl font-black hover:bg-zinc-200 transition">↻ SYNC RAWS</button>
+                        <button onclick="syncProjectFiles('${p.id}','${p.folder}', true)" class="bg-zinc-900 text-white text-[10px] py-2.5 rounded-xl font-black hover:bg-zinc-800 transition">↻ SYNC EDITS</button>
+                    </div>
+
+                    ${p.selected > 0 ? `<button onclick="copySelections('${p.id}')" class="w-full mb-4 text-[10px] text-blue-600 font-bold border border-blue-200 bg-blue-50 py-2 rounded-lg hover:bg-blue-100">COPY LIGHTROOM LIST</button>` : ''}
+
+                    <div class="flex items-center gap-2 bg-zinc-50 p-2 rounded-xl border border-zinc-100">
+                        <code class="text-[9px] text-zinc-500 font-mono truncate flex-1">${window.location.origin}/select.html?s=${p.secret}</code>
+                        <button onclick="navigator.clipboard.writeText('${window.location.origin}/select.html?s=${p.secret}'); alert('Copied!');" class="text-[9px] font-bold text-black hover:text-blue-600">COPY</button>
+                    </div>
+                </div>
+            `).join('');
         }
 
         async function createProject() {
-            const name = prompt("Enter Client/Event Name:");
+            const name = prompt("Client Name?");
             if (!name) return;
-            const res = await fetch('/api/create-project', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, limit: 20 })
+            const limit = prompt("How many photos can they select?", "20");
+            await fetch('/api/create-project', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, limit })
             });
-            if (res.ok) load(false);
-        }
-
-        async function syncMaster() {
-            const btn = document.getElementById('sync-btn');
-            btn.innerText = "SYNCING DRIVE...";
-            btn.disabled = true;
-            await fetch('/api/sync-master-folders', { method: 'POST' });
-            btn.innerText = "SYNC WITH DRIVE";
-            btn.disabled = false;
-            load(currentViewIsArchived);
+            load(false);
         }
 
         async function syncProjectFiles(pId, fId, isEdited) {
-            await fetch('/api/sync-drive', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const btn = event.target;
+            btn.innerText = "Syncing...";
+            const res = await fetch('/api/sync-drive', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ p_id: pId, f_id: fId, is_edited: isEdited })
             });
-            alert("Photos synced from Google Drive!");
-        }
-
-        async function handleUpload(pId, fId, isEdited) {
-            const files = document.getElementById(isEdited ? `edit_${pId}` : `raw_${pId}`).files;
-            if (!files.length) return;
-            
-            alert(`Uploading ${files.length} images. Do not close this tab.`);
-            
-            for (let f of files) {
-                const fd = new FormData();
-                fd.append('file', f);
-                fd.append('p_id', pId);
-                fd.append('f_id', fId);
-                fd.append('is_edited', isEdited);
-                await fetch('/api/upload-file', { method: 'POST', body: fd });
-            }
-            alert("Upload successful!");
+            const data = await res.json();
+            if(data.error) alert(data.error);
+            else alert(`Synced successfully! Found ${data.added} new photos.`);
             load(currentViewIsArchived);
         }
 
+        async function copySelections(pId) {
+            const res = await fetch(`/api/get-selections?p_id=${pId}`);
+            const data = await res.json();
+            const filenameString = data.filenames.join(', ');
+            navigator.clipboard.writeText(filenameString);
+            alert("Copied! Paste this directly into the Lightroom search bar.");
+        }
+
         async function toggleArchive(p_id, val) {
-            await fetch('/api/archive-project', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ p_id, val })
-            });
+            await fetch('/api/archive-project', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id, val }) });
             load(!val);
         }
 
-        function copyLink(text) {
-            navigator.clipboard.writeText(text);
-            alert("Client link copied to clipboard!");
-        }
-
-        // Initial Load
         load();
     </script>
 </body>

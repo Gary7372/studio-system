@@ -1,46 +1,122 @@
 <!DOCTYPE html>
-<html class="bg-black text-white">
-<head><title>YOUR GALLERY | GULUGULU</title><script src="https://cdn.tailwindcss.com"></script></head>
-<body class="p-4">
-    <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
-        <h1 id="cn" class="font-black italic text-2xl tracking-tighter">GULUGULU PICS</h1>
-        <div class="flex gap-6">
-            <button onclick="mode='raw';render()" id="rb" class="text-xs border-b-2 border-white pb-1 tracking-widest font-bold">RAW</button>
-            <button onclick="mode='edited';render()" id="eb" class="text-xs text-zinc-500 tracking-widest font-bold">EDITED</button>
+<html class="bg-zinc-950 text-white min-h-screen">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOUR GALLERY | GULUGULU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-4 md:p-8 pb-24">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-zinc-800 pb-6 gap-4">
+        <h1 id="cn" class="font-black italic text-3xl tracking-tighter">GULUGULU PICS</h1>
+        
+        <div class="flex items-center gap-6">
+            <div id="counter-box" class="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-lg text-sm font-mono">
+                Selected: <span id="sel-count" class="font-bold text-white">0</span> / <span id="sel-limit" class="text-zinc-400">0</span>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="switchTab('raw')" id="rb" class="text-xs border-b-2 border-white pb-1 tracking-widest font-bold">RAW SELECTION</button>
+                <button onclick="switchTab('edited')" id="eb" class="text-xs text-zinc-600 tracking-widest font-bold pb-1">FINAL EDITS</button>
+            </div>
         </div>
     </div>
-    <div id="gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+
+    <div id="gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
 
     <script>
         const secret = new URLSearchParams(window.location.search).get('s');
-        let photos = [], mode = 'raw';
+        let photos = [], mode = 'raw', limit = 0, selectedCount = 0;
 
         async function init() {
             const res = await fetch(`/api/get-client-gallery?secret=${secret}`);
-            if(!res.ok) { document.body.innerHTML = "<h1 class='p-10'>Invalid or Expired Link</h1>"; return; }
+            if(!res.ok) return document.body.innerHTML = "<h1 class='p-10 text-center text-zinc-500'>Link Invalid or Expired</h1>";
+            
             const data = await res.json();
             document.getElementById('cn').innerText = data.project[1].toUpperCase();
-            photos = data.photos; render();
+            limit = data.project[2];
+            document.getElementById('sel-limit').innerText = limit;
+            photos = data.photos; 
+            
+            updateCounter();
+            render();
+        }
+
+        function updateCounter() {
+            selectedCount = photos.filter(p => p.selected && !p.edited).length;
+            const countEl = document.getElementById('sel-count');
+            countEl.innerText = selectedCount;
+            countEl.className = selectedCount >= limit ? "font-bold text-green-400" : "font-bold text-white";
+        }
+
+        async function toggleSelect(db_id) {
+            if (mode === 'edited') return; // Can't select edited photos
+            
+            const photo = photos.find(p => p.db_id === db_id);
+            
+            // Check limits
+            if (!photo.selected && selectedCount >= limit) {
+                alert(`You have reached your limit of ${limit} photos.`);
+                return;
+            }
+
+            // UI Update (Optimistic)
+            photo.selected = !photo.selected;
+            updateCounter();
+            render();
+
+            // Background API Call
+            await fetch('/api/toggle-selection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: secret, photo_id: db_id, selected: photo.selected })
+            });
         }
 
         function render() {
-            const grid = document.getElementById('gallery'); grid.innerHTML = '';
+            const grid = document.getElementById('gallery'); 
+            grid.innerHTML = '';
+            
             const filtered = photos.filter(p => mode === 'edited' ? p.edited : !p.edited);
             
             if(filtered.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-20 text-center text-zinc-600">No photos in this section yet.</div>`;
+                grid.innerHTML = `<div class="col-span-full py-20 text-center text-zinc-600 font-bold tracking-widest text-xs uppercase">No photos available in this section yet.</div>`;
             }
 
             filtered.forEach(p => {
                 const div = document.createElement('div');
-                div.className = "relative group aspect-square bg-zinc-900 rounded overflow-hidden";
-                div.innerHTML = `<img src="${p.url}" class="w-full h-full object-cover">
-                    <a href="https://drive.google.com/uc?export=download&id=${p.id}" class="absolute bottom-2 right-2 bg-black/80 px-2 py-1 text-[8px] rounded opacity-0 group-hover:opacity-100 font-bold">DOWNLOAD ORIGINAL</a>`;
+                div.className = `relative group aspect-square bg-zinc-900 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${p.selected && mode === 'raw' ? 'border-green-500 p-1' : 'border-transparent'}`;
+                
+                // Clicking the image selects it (if in RAW mode)
+                div.onclick = () => toggleSelect(p.db_id);
+
+                div.innerHTML = `
+                    <img src="${p.url}" class="w-full h-full object-cover rounded">
+                    
+                    ${mode === 'raw' ? `
+                        <div class="absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${p.selected ? 'bg-green-500 border-green-500' : 'bg-black/50'}">
+                            ${p.selected ? '<span class="text-white text-xs">✓</span>' : ''}
+                        </div>
+                    ` : ''}
+
+                    <a href="https://drive.google.com/uc?export=download&id=${p.id}" download onclick="event.stopPropagation()" class="absolute bottom-2 right-2 bg-black/80 px-3 py-1.5 text-[9px] rounded opacity-0 group-hover:opacity-100 font-bold hover:bg-blue-600 transition">
+                        DOWNLOAD
+                    </a>
+                `;
                 grid.appendChild(div);
             });
-            document.getElementById('rb').className = mode === 'raw' ? 'text-xs border-b-2 border-white pb-1 font-bold' : 'text-xs text-zinc-500 font-bold';
-            document.getElementById('eb').className = mode === 'edited' ? 'text-xs border-b-2 border-white pb-1 font-bold' : 'text-xs text-zinc-500 font-bold';
         }
+
+        function switchTab(newMode) {
+            mode = newMode;
+            document.getElementById('rb').className = mode === 'raw' ? 'text-xs border-b-2 border-white pb-1 tracking-widest font-bold' : 'text-xs text-zinc-600 tracking-widest font-bold pb-1';
+            document.getElementById('eb').className = mode === 'edited' ? 'text-xs border-b-2 border-white pb-1 tracking-widest font-bold' : 'text-xs text-zinc-600 tracking-widest font-bold pb-1';
+            
+            // Hide counter if in Edited tab
+            document.getElementById('counter-box').style.opacity = mode === 'raw' ? '1' : '0.3';
+            render();
+        }
+
         init();
     </script>
 </body>
