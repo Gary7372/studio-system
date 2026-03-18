@@ -1,42 +1,75 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Admin | Gulugulu Pics</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow">
-        <h1 class="text-2xl font-bold mb-6">Create Client Session</h1>
-        <div class="space-y-4">
-            <input id="name" type="text" placeholder="Client Name" class="w-full p-3 border rounded">
-            <div>
-                <label class="text-sm text-gray-500">Photo Selection Limit</label>
-                <input id="limit" type="number" value="10" class="w-full p-3 border rounded">
+<head><title>GULUGULU PICS | ADMIN</title><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-zinc-100 p-6 font-sans">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-black italic tracking-tighter">GULUGULU PICS</h1>
+            <div class="flex gap-2">
+                <button onclick="load(false)" class="text-xs font-bold px-4 py-2 bg-white rounded-lg shadow-sm border">ACTIVE</button>
+                <button onclick="load(true)" class="text-xs text-zinc-400 px-4 py-2">VAULT</button>
+                <button onclick="create()" class="bg-black text-white px-6 py-2 rounded-lg font-bold ml-2">+ NEW SHOOT</button>
             </div>
-            <button onclick="setup()" id="btn" class="w-full bg-black text-white p-3 rounded font-bold">Create & Get Link</button>
-        </div>
-        <div id="result" class="mt-6 hidden p-4 bg-blue-50 rounded break-all"></div>
+        </header>
+        <div id="grid" class="grid gap-6"></div>
     </div>
 
     <script>
-        async function setup() {
-            const name = document.getElementById('name').value;
-            const limit = document.getElementById('limit').value;
-            const btn = document.getElementById('btn');
-            btn.innerText = "Creating...";
-
-            const res = await fetch('/api/create-project', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name, limit })
-            });
+        async function load(archived = false) {
+            const res = await fetch(`/api/list-projects?archived=${archived}`);
             const data = await res.json();
-            
-            const link = `${window.location.origin}/select.html?id=${data.project_id}`;
-            document.getElementById('result').classList.remove('hidden');
-            document.getElementById('result').innerHTML = `<strong>Client Link:</strong><br>${link}`;
-            btn.innerText = "Create Project";
+            document.getElementById('grid').innerHTML = data.map(p => `
+                <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <h2 class="text-xl font-bold uppercase">${p.name}</h2>
+                        <button onclick="toggleArchive('${p.id}', ${!archived})" class="text-[10px] text-zinc-400 font-bold hover:text-orange-500">${archived ? 'RESTORE' : 'ARCHIVE'}</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="space-y-1">
+                            <input type="file" id="f_${p.id}" multiple class="hidden" onchange="upload('${p.id}','${p.folder}', false)">
+                            <button onclick="document.getElementById('f_${p.id}').click()" class="w-full bg-zinc-100 text-[10px] py-2 rounded font-bold">UPLOAD RAW</button>
+                            <button onclick="sync('${p.id}','${p.folder}', false)" class="w-full text-[9px] text-zinc-400 italic">Sync from Drive</button>
+                        </div>
+                        <div class="space-y-1">
+                            <input type="file" id="e_${p.id}" multiple class="hidden" onchange="upload('${p.id}','${p.folder}', true)">
+                            <button onclick="document.getElementById('e_${p.id}').click()" class="w-full bg-zinc-900 text-white text-[10px] py-2 rounded font-bold">UPLOAD EDITED</button>
+                            <button onclick="sync('${p.id}','${p.folder}', true)" class="w-full text-[9px] text-zinc-400 italic">Sync from Drive</button>
+                        </div>
+                    </div>
+                    <div class="text-[9px] bg-zinc-50 p-2 rounded break-all font-mono text-blue-600 cursor-pointer text-center" onclick="navigator.clipboard.writeText(this.innerText);alert('Copied!')">
+                        ${window.location.origin}/select.html?s=${p.secret}
+                    </div>
+                </div>
+            `).join('');
         }
+
+        async function upload(pId, fId, isEdited) {
+            const files = document.getElementById(isEdited ? `e_${pId}` : `f_${pId}`).files;
+            for (let f of files) {
+                const fd = new FormData();
+                fd.append('file', f); fd.append('p_id', pId); fd.append('f_id', fId); fd.append('is_edited', isEdited);
+                await fetch('/api/upload-file', {method:'POST', body:fd});
+            }
+            alert("Upload Complete!"); load();
+        }
+
+        async function sync(p_id, f_id, is_edited) {
+            await fetch('/api/sync-drive', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({p_id, f_id, is_edited})});
+            alert("Drive Synced!"); load();
+        }
+
+        async function toggleArchive(p_id, val) {
+            await fetch('/api/archive-project', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({p_id, val})});
+            load(!val);
+        }
+
+        async function create() {
+            const name = prompt("Client Name?");
+            if(!name) return;
+            await fetch('/api/create-project', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, limit:20})});
+            load();
+        }
+        load();
     </script>
 </body>
 </html>
