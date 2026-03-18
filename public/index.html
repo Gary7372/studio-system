@@ -6,8 +6,8 @@
         <header class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-black italic tracking-tighter">GULUGULU PICS</h1>
             <div class="flex gap-2">
-                <button onclick="load(false)" class="text-xs font-bold px-4 py-2 bg-white rounded-lg shadow-sm border">ACTIVE</button>
-                <button onclick="load(true)" class="text-xs text-zinc-400 px-4 py-2">VAULT</button>
+                <button onclick="load(false)" id="tab-active" class="text-xs font-bold px-4 py-2 bg-white rounded-lg shadow-sm border">ACTIVE</button>
+                <button onclick="load(true)" id="tab-vault" class="text-xs text-zinc-400 px-4 py-2">VAULT</button>
                 <button onclick="create()" class="bg-black text-white px-6 py-2 rounded-lg font-bold ml-2">+ NEW SHOOT</button>
             </div>
         </header>
@@ -18,6 +18,10 @@
         async function load(archived = false) {
             const res = await fetch(`/api/list-projects?archived=${archived}`);
             const data = await res.json();
+            
+            document.getElementById('tab-active').className = !archived ? "text-xs font-bold px-4 py-2 bg-white rounded-lg shadow-sm border" : "text-xs text-zinc-400 px-4 py-2";
+            document.getElementById('tab-vault').className = archived ? "text-xs font-bold px-4 py-2 bg-white rounded-lg shadow-sm border" : "text-xs text-zinc-400 px-4 py-2";
+
             document.getElementById('grid').innerHTML = data.map(p => `
                 <div class="bg-white p-6 rounded-2xl border shadow-sm">
                     <div class="flex justify-between items-start mb-4">
@@ -26,25 +30,27 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="space-y-1">
-                            <input type="file" id="f_${p.id}" multiple class="hidden" onchange="upload('${p.id}','${p.folder}', false)">
+                            <input type="file" id="f_${p.id}" multiple class="hidden" onchange="handleUpload('${p.id}','${p.folder}', false)">
                             <button onclick="document.getElementById('f_${p.id}').click()" class="w-full bg-zinc-100 text-[10px] py-2 rounded font-bold">UPLOAD RAW</button>
                             <button onclick="sync('${p.id}','${p.folder}', false)" class="w-full text-[9px] text-zinc-400 italic">Sync from Drive</button>
                         </div>
                         <div class="space-y-1">
-                            <input type="file" id="e_${p.id}" multiple class="hidden" onchange="upload('${p.id}','${p.folder}', true)">
+                            <input type="file" id="e_${p.id}" multiple class="hidden" onchange="handleUpload('${p.id}','${p.folder}', true)">
                             <button onclick="document.getElementById('e_${p.id}').click()" class="w-full bg-zinc-900 text-white text-[10px] py-2 rounded font-bold">UPLOAD EDITED</button>
                             <button onclick="sync('${p.id}','${p.folder}', true)" class="w-full text-[9px] text-zinc-400 italic">Sync from Drive</button>
                         </div>
                     </div>
-                    <div class="text-[9px] bg-zinc-50 p-2 rounded break-all font-mono text-blue-600 cursor-pointer text-center" onclick="navigator.clipboard.writeText(this.innerText);alert('Copied!')">
+                    <div class="text-[9px] bg-zinc-50 p-2 rounded break-all font-mono text-blue-600 cursor-pointer text-center" onclick="navigator.clipboard.writeText(this.innerText);alert('Link Copied!')">
                         ${window.location.origin}/select.html?s=${p.secret}
                     </div>
                 </div>
             `).join('');
         }
 
-        async function upload(pId, fId, isEdited) {
+        async function handleUpload(pId, fId, isEdited) {
             const files = document.getElementById(isEdited ? `e_${pId}` : `f_${pId}`).files;
+            if(!files.length) return;
+            alert(`Starting upload of ${files.length} photos. Please wait...`);
             for (let f of files) {
                 const fd = new FormData();
                 fd.append('file', f); fd.append('p_id', pId); fd.append('f_id', fId); fd.append('is_edited', isEdited);

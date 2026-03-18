@@ -17,6 +17,7 @@
 
         async function init() {
             const res = await fetch(`/api/get-client-gallery?secret=${secret}`);
+            if(!res.ok) { document.body.innerHTML = "<h1 class='p-10'>Invalid or Expired Link</h1>"; return; }
             const data = await res.json();
             document.getElementById('cn').innerText = data.project[1].toUpperCase();
             photos = data.photos; render();
@@ -24,7 +25,13 @@
 
         function render() {
             const grid = document.getElementById('gallery'); grid.innerHTML = '';
-            photos.filter(p => mode === 'edited' ? p.edited : !p.edited).forEach(p => {
+            const filtered = photos.filter(p => mode === 'edited' ? p.edited : !p.edited);
+            
+            if(filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-20 text-center text-zinc-600">No photos in this section yet.</div>`;
+            }
+
+            filtered.forEach(p => {
                 const div = document.createElement('div');
                 div.className = "relative group aspect-square bg-zinc-900 rounded overflow-hidden";
                 div.innerHTML = `<img src="${p.url}" class="w-full h-full object-cover">
