@@ -95,8 +95,9 @@
         }
 
         async function syncProjectFiles(pId, fId, isEdited) {
+            const btn = event.target; const origText = btn.innerText; btn.innerText = "SYNCING...";
             const res = await fetch('/api/sync-drive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: pId, f_id: fId, is_edited: isEdited }) });
-            const data = await res.json(); alert(`Synced! Added ${data.added} new photos.`); load(currentViewIsArchived);
+            const data = await res.json(); alert(`Synced! Added ${data.added} new photos.`); btn.innerText = origText; load(currentViewIsArchived);
         }
 
         async function copySelections(pId) {

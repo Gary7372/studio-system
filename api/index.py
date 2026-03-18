@@ -23,15 +23,14 @@ def create():
     secret = str(uuid.uuid4())[:8]
     drive = get_drive()
     
-    # 1. Create Main Client Folder
+    # 1. Create Main Client Folder (RAW)
     main_meta = {'name': data['name'], 'mimeType': 'application/vnd.google-apps.folder', 'parents': [os.getenv("MASTER_FOLDER_ID")]}
     main_folder = drive.files().create(body=main_meta, fields='id', supportsAllDrives=True).execute()
+    drive.permissions().create(fileId=main_folder['id'], body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
     
     # 2. Automatically Create 'Edited' Sub-folder
     edit_meta = {'name': 'Edited', 'mimeType': 'application/vnd.google-apps.folder', 'parents': [main_folder['id']]}
     edited_folder = drive.files().create(body=edit_meta, fields='id', supportsAllDrives=True).execute()
-    
-    # 3. Make Edited folder viewable so client can "Download All" natively via Google Drive
     drive.permissions().create(fileId=edited_folder['id'], body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
     
     conn = get_db(); cur = conn.cursor()
@@ -45,11 +44,10 @@ def sync_master():
     drive = get_drive()
     conn = get_db(); cur = conn.cursor()
     
-    # Get all active folders in Drive
     results = drive.files().list(q=f"'{os.getenv('MASTER_FOLDER_ID')}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", fields="files(id, name)").execute()
     drive_ids = [f['id'] for f in results.get('files', [])]
     
-    # Loophole Fix: Delete DB records if folder was deleted in Drive (Kills Customer Link)
+    # Delete DB records if folder was deleted manually in Drive
     cur.execute("SELECT folder_id, id FROM projects")
     for (folder_id, p_id) in cur.fetchall():
         if folder_id not in drive_ids:
@@ -68,11 +66,11 @@ def delete_project():
     if folder_id:
         try:
             get_drive().files().delete(fileId=folder_id[0], supportsAllDrives=True).execute()
-        except: pass # Ignore if already deleted manually
+        except: pass 
         
     cur.execute("DELETE FROM projects WHERE id = %s", (p_id,))
     conn.commit()
-    return jsonify({"status": "Project and Drive Folder Deleted"})
+    return jsonify({"status": "Project Deleted"})
 
 @app.route('/api/list-projects', methods=['GET'])
 def list_p():
@@ -104,7 +102,7 @@ def sync():
     
     added = 0
     for f in files:
-        cur.execute("SELECT id FROM photos WHERE drive_id = %s", (f['id'],))
+        cur.execute("SELECT id FROM photos WHERE project_id = %s AND file_name = %s AND is_edited = %s", (p_id, f['name'], is_edited))
         if not cur.fetchone():
             cur.execute("INSERT INTO photos (project_id, drive_id, thumbnail_url, is_edited, file_name) VALUES (%s,%s,%s,%s,%s)", (p_id, f['id'], f['thumbnailLink'], is_edited, f['name']))
             added += 1
@@ -115,7 +113,7 @@ def sync():
 def get_gallery():
     secret = request.args.get('secret')
     conn = get_db(); cur = conn.cursor()
-    cur.execute("SELECT id, client_name, selection_limit, edited_folder_id FROM projects WHERE client_secret = %s", (secret,))
+    cur.execute("SELECT id, client_name, selection_limit, edited_folder_id, folder_id FROM projects WHERE client_secret = %s", (secret,))
     proj = cur.fetchone()
     if not proj: return jsonify({"error": "Invalid Link"}), 404
     
