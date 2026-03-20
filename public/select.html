@@ -38,18 +38,17 @@
         </div>
 
         <div id="submitted-banner" class="hidden bg-green-900/40 border border-green-500 text-green-400 p-4 rounded-xl mb-8 text-center font-bold text-sm tracking-widest uppercase">
-            ✓ Your selections have been submitted to the photographer.
-        </div>
+            </div>
 
         <div id="gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"></div>
     </div>
 
     <div id="preview-view" class="hidden max-w-7xl mx-auto">
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-zinc-800 pb-6 gap-4">
-            <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter text-blue-400 text-center md:text-left">REVIEW SELECTIONS</h2>
+            <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter text-blue-400 text-center md:text-left">REVIEW NEW SELECTIONS</h2>
             <button onclick="togglePreview(false)" class="text-sm md:text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 px-6 py-3 rounded-lg w-full md:w-auto">← BACK TO GALLERY</button>
         </div>
-        <p class="text-zinc-400 mb-8 text-base md:text-sm text-center md:text-left px-2">Please review your final choices below. Once submitted, your selection will be locked for editing.</p>
+        <p class="text-zinc-400 mb-8 text-base md:text-sm text-center md:text-left px-2">Please review your new choices below. Once submitted, these specific photos will be locked.</p>
         <div id="preview-gallery" class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 mb-10"></div>
         <div class="flex justify-center mb-20 px-4">
             <button onclick="submitSelections()" class="w-full md:w-auto bg-blue-600 text-white px-6 md:px-10 py-5 md:py-4 rounded-xl text-sm font-black tracking-widest hover:bg-blue-500 transition shadow-lg shadow-blue-900/50">
@@ -60,7 +59,7 @@
 
     <div id="action-bar" class="fixed bottom-0 left-0 w-full bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-4 md:p-6 transform translate-y-full transition-transform duration-300 flex justify-center z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         <button onclick="togglePreview(true)" class="w-full md:w-auto bg-white text-black px-6 md:px-10 py-4 md:py-3 rounded-xl text-sm md:text-xs font-black tracking-widest hover:bg-zinc-200 transition shadow-lg">
-            REVIEW & SUBMIT SELECTIONS →
+            REVIEW & SUBMIT NEW SELECTIONS →
         </button>
     </div>
 
@@ -80,9 +79,12 @@
             document.getElementById('cn').innerText = projectData[1].toUpperCase();
             limit = projectData[2];
             document.getElementById('sel-limit').innerText = limit;
-            photos = data.photos; 
             
-            if(isSubmitted) document.getElementById('submitted-banner').classList.remove('hidden');
+            // SMART LOCKING: Any photo that was already selected when the page loaded is marked as 'locked'
+            photos = data.photos.map(p => ({
+                ...p,
+                locked: isSubmitted && p.selected 
+            }));
             
             updateCounter();
             switchTab('raw'); 
@@ -90,12 +92,26 @@
 
         function updateCounter() {
             selectedCount = photos.filter(p => p.selected && !p.edited).length;
+            const newSelections = photos.filter(p => p.selected && !p.locked && !p.edited).length;
+
             const countEl = document.getElementById('sel-count');
             countEl.innerText = selectedCount;
             countEl.className = selectedCount >= limit ? "font-bold text-green-400 text-xl md:text-lg" : "font-bold text-white text-xl md:text-lg";
             
+            // Handle Banner Text
+            const banner = document.getElementById('submitted-banner');
+            if (isSubmitted) {
+                banner.classList.remove('hidden');
+                if (selectedCount < limit) {
+                    banner.innerText = `✓ ${selectedCount} Selections submitted. You can still select ${limit - selectedCount} more.`;
+                } else {
+                    banner.innerText = `✓ All ${limit} selections have been locked and submitted.`;
+                }
+            }
+
+            // Show Action bar ONLY if there are brand new selections to submit
             const actionBar = document.getElementById('action-bar');
-            if (selectedCount > 0 && !isSubmitted && mode === 'raw') {
+            if (newSelections > 0 && mode === 'raw') {
                 actionBar.classList.remove('translate-y-full');
             } else {
                 actionBar.classList.add('translate-y-full');
@@ -103,11 +119,17 @@
         }
 
         async function toggleSelect(db_id) {
-            if (mode === 'edited' || isSubmitted) return; 
+            if (mode === 'edited') return; 
             
             const photo = photos.find(p => p.db_id === db_id);
+            
+            if (photo.locked) {
+                alert("This specific photo has already been submitted and locked.");
+                return;
+            }
+
             if (!photo.selected && selectedCount >= limit) {
-                alert(`You have reached your limit of ${limit} photos.`);
+                alert(`You have reached your total limit of ${limit} photos.`);
                 return;
             }
 
@@ -130,16 +152,19 @@
 
             filtered.forEach(p => {
                 const div = document.createElement('div');
-                const submittedStyle = (isSubmitted && !p.selected && mode === 'raw') ? 'opacity-30' : '';
+                const lockedStyle = (p.locked && mode === 'raw') ? 'opacity-50' : '';
                 
-                div.className = `relative group aspect-square bg-zinc-900 rounded-xl overflow-hidden ${!isSubmitted ? 'cursor-pointer' : ''} border-4 transition-all ${p.selected && mode === 'raw' ? 'border-green-500 scale-[0.96]' : 'border-transparent hover:border-zinc-700'} ${submittedStyle}`;
+                div.className = `relative group aspect-square bg-zinc-900 rounded-xl overflow-hidden cursor-pointer border-4 transition-all ${p.selected && mode === 'raw' ? 'border-green-500 scale-[0.96]' : 'border-transparent hover:border-zinc-700'} ${lockedStyle}`;
                 div.onclick = () => toggleSelect(p.db_id);
+
+                // If locked, show padlock. If selected, show checkmark.
+                const icon = p.locked ? '🔒' : '<svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>';
 
                 div.innerHTML = `
                     <img src="${p.url}" class="w-full h-full object-cover">
                     ${mode === 'raw' ? `
                         <div class="absolute top-2 md:top-3 right-2 md:right-3 w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white flex items-center justify-center transition-colors ${p.selected ? 'bg-green-500 border-green-500' : 'bg-black/40'}">
-                            ${p.selected ? '<svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                            ${p.selected ? icon : ''}
                         </div>
                     ` : ''}
                 `;
@@ -157,8 +182,9 @@
                 actionBar.classList.add('translate-y-full'); 
                 previewView.classList.remove('hidden');
                 
+                // Only show newly selected photos in the preview
                 const previewGrid = document.getElementById('preview-gallery');
-                previewGrid.innerHTML = photos.filter(p => p.selected && !p.edited).map(p => `
+                previewGrid.innerHTML = photos.filter(p => p.selected && !p.locked && !p.edited).map(p => `
                     <div class="aspect-square bg-zinc-900 rounded-lg overflow-hidden border-2 border-green-500">
                         <img src="${p.url}" class="w-full h-full object-cover">
                     </div>
@@ -172,7 +198,7 @@
         }
 
         async function submitSelections() {
-            if(!confirm("Are you sure? This will lock your choices and notify the photographer.")) return;
+            if(!confirm("Are you sure? This will lock these choices and notify the photographer.")) return;
             
             await fetch('/api/submit-selections', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },

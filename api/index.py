@@ -90,12 +90,29 @@ def delete_project():
     conn = get_db(); cur = conn.cursor()
     cur.execute("SELECT folder_id FROM projects WHERE id = %s", (p_id,))
     folder_id = cur.fetchone()
+    
     if folder_id:
-        try: get_drive().files().delete(fileId=folder_id[0], supportsAllDrives=True).execute()
-        except: pass 
+        drive = get_drive()
+        master_id = os.getenv("MASTER_FOLDER_ID")
+        try: 
+            # Try to permanently delete
+            drive.files().delete(fileId=folder_id[0], supportsAllDrives=True).execute()
+        except: 
+            # Fallback: Eject the folder from the Master Folder so it disappears from the Dashboard
+            try: drive.files().update(fileId=folder_id[0], removeParents=master_id, supportsAllDrives=True).execute()
+            except: pass
+            
     cur.execute("DELETE FROM projects WHERE id = %s", (p_id,))
     conn.commit()
     return jsonify({"status": "Project Deleted"})
+
+@app.route('/api/update-limit', methods=['POST'])
+def update_limit():
+    data = request.json
+    conn = get_db(); cur = conn.cursor()
+    cur.execute("UPDATE projects SET selection_limit = %s WHERE id = %s", (int(data['limit']), data['p_id']))
+    conn.commit()
+    return jsonify({"status": "success"})
 
 @app.route('/api/list-projects', methods=['GET'])
 def list_p():

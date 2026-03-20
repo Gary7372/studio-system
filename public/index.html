@@ -54,8 +54,11 @@
                     
                     <div class="bg-zinc-50 p-4 rounded-2xl mb-5 border border-zinc-100">
                         <div class="flex justify-between items-center mb-3">
-                            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Client Selections ${p.status === 'submitted' ? '(LOCKED)' : ''}</span>
-                            <span class="text-sm font-black ${p.selected >= p.limit ? 'text-green-500' : 'text-zinc-800'}">${p.selected} / ${p.limit}</span>
+                            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Client Selections</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-black ${p.selected >= p.limit ? 'text-green-500' : 'text-zinc-800'}">${p.selected} / ${p.limit}</span>
+                                <button onclick="editLimit('${p.id}', '${p.limit}')" class="text-[9px] bg-zinc-200 px-2 py-1 rounded font-bold text-zinc-600 hover:text-black hover:bg-zinc-300 transition">EDIT LIMIT</button>
+                            </div>
                         </div>
                         ${p.selected > 0 ? `<button onclick="copySelections('${p.id}')" class="w-full text-[10px] text-zinc-700 font-bold border border-zinc-300 bg-white py-2 rounded-lg hover:border-black transition">📋 COPY LIGHTROOM LIST</button>` : ''}
                     </div>
@@ -89,8 +92,15 @@
         }
 
         async function deleteProject(pId) {
-            if(!confirm("Are you sure? This deletes the project AND the Google Drive Folder permanently.")) return;
+            if(!confirm("Are you sure? This deletes the project from the dashboard and ejects the Drive folder.")) return;
             await fetch('/api/delete-project', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: pId }) });
+            load(currentViewIsArchived);
+        }
+
+        async function editLimit(pId, currentLimit) {
+            const newLimit = prompt("Enter new total selection limit:", currentLimit);
+            if(!newLimit || isNaN(newLimit) || newLimit === currentLimit) return;
+            await fetch('/api/update-limit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: pId, limit: newLimit }) });
             load(currentViewIsArchived);
         }
 
