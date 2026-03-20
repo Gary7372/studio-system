@@ -23,15 +23,16 @@ def create():
     secret = str(uuid.uuid4())[:8]
     drive = get_drive()
     
-    # 1. Create Main Client Folder (RAW)
     main_meta = {'name': data['name'], 'mimeType': 'application/vnd.google-apps.folder', 'parents': [os.getenv("MASTER_FOLDER_ID")]}
     main_folder = drive.files().create(body=main_meta, fields='id', supportsAllDrives=True).execute()
-    drive.permissions().create(fileId=main_folder['id'], body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
     
-    # 2. Automatically Create 'Edited' Sub-folder
     edit_meta = {'name': 'Edited', 'mimeType': 'application/vnd.google-apps.folder', 'parents': [main_folder['id']]}
     edited_folder = drive.files().create(body=edit_meta, fields='id', supportsAllDrives=True).execute()
-    drive.permissions().create(fileId=edited_folder['id'], body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
+    
+    try:
+        drive.permissions().create(fileId=main_folder['id'], body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
+        drive.permissions().create(fileId=edited_folder['id'], body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
+    except: pass
     
     conn = get_db(); cur = conn.cursor()
     cur.execute("INSERT INTO projects (client_name, selection_limit, folder_id, edited_folder_id, client_secret) VALUES (%s,%s,%s,%s,%s)",
@@ -45,16 +46,43 @@ def sync_master():
     conn = get_db(); cur = conn.cursor()
     
     results = drive.files().list(q=f"'{os.getenv('MASTER_FOLDER_ID')}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", fields="files(id, name)").execute()
-    drive_ids = [f['id'] for f in results.get('files', [])]
+    drive_folders = results.get('files', [])
+    drive_ids = [f['id'] for f in drive_folders]
     
-    # Delete DB records if folder was deleted manually in Drive
     cur.execute("SELECT folder_id, id FROM projects")
-    for (folder_id, p_id) in cur.fetchall():
-        if folder_id not in drive_ids:
+    db_folders = {row[0]: row[1] for row in cur.fetchall()}
+    
+    for f_id, p_id in db_folders.items():
+        if f_id not in drive_ids:
             cur.execute("DELETE FROM projects WHERE id = %s", (p_id,))
+            
+    for f in drive_folders:
+        if f['id'] not in db_folders:
+            sub_res = drive.files().list(q=f"'{f['id']}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false", fields="files(id, name)").execute()
+            subfolders = sub_res.get('files', [])
+            
+            edited_id = None
+            for sub in subfolders:
+                if sub['name'].lower() == 'edited':
+                    edited_id = sub['id']
+                    break
+            
+            if not edited_id:
+                edited_meta = {'name': 'Edited', 'mimeType': 'application/vnd.google-apps.folder', 'parents': [f['id']]}
+                edited_folder = drive.files().create(body=edited_meta, fields='id', supportsAllDrives=True).execute()
+                edited_id = edited_folder['id']
+            
+            try:
+                drive.permissions().create(fileId=f['id'], body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
+                drive.permissions().create(fileId=edited_id, body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
+            except: pass
+
+            secret = str(uuid.uuid4())[:8]
+            cur.execute("INSERT INTO projects (client_name, selection_limit, folder_id, edited_folder_id, client_secret) VALUES (%s,%s,%s,%s,%s)", 
+                        (f['name'], 20, f['id'], edited_id, secret))
     
     conn.commit()
-    return jsonify({"status": "Synced! Missing folders were purged."})
+    return jsonify({"status": "Two-Way Sync Complete!"})
 
 @app.route('/api/delete-project', methods=['POST'])
 def delete_project():
@@ -62,12 +90,9 @@ def delete_project():
     conn = get_db(); cur = conn.cursor()
     cur.execute("SELECT folder_id FROM projects WHERE id = %s", (p_id,))
     folder_id = cur.fetchone()
-    
     if folder_id:
-        try:
-            get_drive().files().delete(fileId=folder_id[0], supportsAllDrives=True).execute()
+        try: get_drive().files().delete(fileId=folder_id[0], supportsAllDrives=True).execute()
         except: pass 
-        
     cur.execute("DELETE FROM projects WHERE id = %s", (p_id,))
     conn.commit()
     return jsonify({"status": "Project Deleted"})
@@ -113,9 +138,9 @@ def sync():
 def get_gallery():
     secret = request.args.get('secret')
     conn = get_db(); cur = conn.cursor()
-    cur.execute("SELECT id, client_name, selection_limit, edited_folder_id, folder_id FROM projects WHERE client_secret = %s", (secret,))
+    cur.execute("SELECT id, client_name, selection_limit, edited_folder_id, folder_id, status FROM projects WHERE client_secret = %s AND is_archived = FALSE", (secret,))
     proj = cur.fetchone()
-    if not proj: return jsonify({"error": "Invalid Link"}), 404
+    if not proj: return jsonify({"error": "Link Inactive or Invalid"}), 404
     
     cur.execute("SELECT id, drive_id, thumbnail_url, is_edited, is_selected, file_name FROM photos WHERE project_id = %s AND is_latest = TRUE", (proj[0],))
     photos = [{"db_id": r[0], "id": r[1], "url": r[2], "edited": r[3], "selected": r[4], "name": r[5]} for r in cur.fetchall()]
@@ -126,6 +151,14 @@ def toggle_selection():
     data = request.json
     conn = get_db(); cur = conn.cursor()
     cur.execute("UPDATE photos SET is_selected = %s WHERE id = %s", (data['selected'], data['photo_id']))
+    conn.commit()
+    return jsonify({"status": "success"})
+
+@app.route('/api/submit-selections', methods=['POST'])
+def submit_selections():
+    secret = request.json['secret']
+    conn = get_db(); cur = conn.cursor()
+    cur.execute("UPDATE projects SET status = 'submitted' WHERE client_secret = %s", (secret,))
     conn.commit()
     return jsonify({"status": "success"})
 

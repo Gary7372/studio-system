@@ -2,66 +2,109 @@
 <html class="bg-zinc-950 text-white min-h-screen">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YOUR GALLERY | GULUGULU</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <style>body { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body class="p-4 md:p-10 pb-24">
+<body class="p-4 md:p-10 pb-32">
     
-    <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 border-b border-zinc-800 pb-8 gap-6">
-            <h1 id="cn" class="font-black italic text-4xl tracking-tighter">GULUGULU PICS</h1>
+    <div id="main-view" class="max-w-7xl mx-auto">
+        
+        <div class="mb-6 text-center md:text-left">
+            <span class="inline-block text-xl md:text-2xl font-black tracking-[0.3em] text-white border-2 md:border-4 border-white px-4 py-1.5 uppercase">GULUGULU</span>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-zinc-800 pb-8 gap-6">
+            <h1 id="cn" class="font-black italic text-4xl md:text-5xl tracking-tighter w-full text-center md:text-left break-words">CLIENT GALLERY</h1>
             
-            <div class="flex flex-col items-end gap-4">
-                <div id="counter-box" class="bg-zinc-900 border border-zinc-800 px-5 py-2.5 rounded-xl text-sm font-mono shadow-inner transition-opacity">
-                    Selected: <span id="sel-count" class="font-bold text-white text-lg">0</span> <span class="text-zinc-500">/</span> <span id="sel-limit" class="text-zinc-400">0</span>
+            <div class="flex flex-col w-full md:w-auto items-stretch md:items-end gap-4">
+                <div id="counter-box" class="bg-zinc-900 border border-zinc-800 px-5 py-4 md:py-2.5 rounded-xl text-base md:text-sm font-mono shadow-inner text-center transition-opacity">
+                    Selected: <span id="sel-count" class="font-bold text-white text-xl md:text-lg">0</span> <span class="text-zinc-500">/</span> <span id="sel-limit" class="text-zinc-400 text-lg md:text-base">0</span>
                 </div>
                 
-                <div class="flex gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
-                    <button onclick="switchTab('raw')" id="rb" class="px-6 py-2 rounded-lg text-xs font-bold bg-white text-black transition shadow-sm">RAW SELECTION</button>
-                    <button onclick="switchTab('edited')" id="eb" class="px-6 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition">FINAL EDITS</button>
+                <div class="flex gap-2 bg-zinc-900 p-1.5 md:p-1 rounded-xl border border-zinc-800 w-full md:w-auto">
+                    <button onclick="switchTab('raw')" id="rb" class="flex-1 md:flex-none px-4 md:px-6 py-3 md:py-2 rounded-lg text-sm md:text-xs font-bold bg-white text-black transition shadow-sm">RAW SELECTION</button>
+                    <button onclick="switchTab('edited')" id="eb" class="flex-1 md:flex-none px-4 md:px-6 py-3 md:py-2 rounded-lg text-sm md:text-xs font-bold text-zinc-400 hover:text-white transition">FINAL EDITS</button>
                 </div>
             </div>
         </div>
 
-        <div id="download-all-container" class="hidden flex justify-end mb-6">
-            <a id="download-all-link" href="#" target="_blank" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black tracking-widest hover:bg-blue-500 transition shadow-lg shadow-blue-900/50">
-                ↓ DOWNLOAD ALL (ZIP)
+        <div id="download-all-container" class="hidden flex justify-center md:justify-end mb-8 w-full">
+            <a id="download-all-link" href="#" target="_blank" class="w-full md:w-auto text-center bg-blue-600 text-white px-8 py-4 md:py-3 rounded-xl text-sm md:text-xs font-black tracking-widest hover:bg-blue-500 transition shadow-lg shadow-blue-900/50">
+                ↓ DOWNLOAD
             </a>
         </div>
 
-        <div id="gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+        <div id="submitted-banner" class="hidden bg-green-900/40 border border-green-500 text-green-400 p-4 rounded-xl mb-8 text-center font-bold text-sm tracking-widest uppercase">
+            ✓ Your selections have been submitted to the photographer.
+        </div>
+
+        <div id="gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"></div>
+    </div>
+
+    <div id="preview-view" class="hidden max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-zinc-800 pb-6 gap-4">
+            <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter text-blue-400 text-center md:text-left">REVIEW SELECTIONS</h2>
+            <button onclick="togglePreview(false)" class="text-sm md:text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 px-6 py-3 rounded-lg w-full md:w-auto">← BACK TO GALLERY</button>
+        </div>
+        <p class="text-zinc-400 mb-8 text-base md:text-sm text-center md:text-left px-2">Please review your final choices below. Once submitted, your selection will be locked for editing.</p>
+        <div id="preview-gallery" class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 mb-10"></div>
+        <div class="flex justify-center mb-20 px-4">
+            <button onclick="submitSelections()" class="w-full md:w-auto bg-blue-600 text-white px-6 md:px-10 py-5 md:py-4 rounded-xl text-sm font-black tracking-widest hover:bg-blue-500 transition shadow-lg shadow-blue-900/50">
+                CONFIRM & SUBMIT TO PHOTOGRAPHER
+            </button>
+        </div>
+    </div>
+
+    <div id="action-bar" class="fixed bottom-0 left-0 w-full bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-4 md:p-6 transform translate-y-full transition-transform duration-300 flex justify-center z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <button onclick="togglePreview(true)" class="w-full md:w-auto bg-white text-black px-6 md:px-10 py-4 md:py-3 rounded-xl text-sm md:text-xs font-black tracking-widest hover:bg-zinc-200 transition shadow-lg">
+            REVIEW & SUBMIT SELECTIONS →
+        </button>
     </div>
 
     <script>
         const secret = new URLSearchParams(window.location.search).get('s');
         let photos = [], mode = 'raw', limit = 0, selectedCount = 0, projectData = null;
+        let isSubmitted = false;
 
         async function init() {
             const res = await fetch(`/api/get-client-gallery?secret=${secret}`);
-            if(!res.ok) return document.body.innerHTML = "<div class='flex items-center justify-center h-screen'><h1 class='text-2xl font-bold text-zinc-600 uppercase tracking-widest'>Link Invalid or Expired</h1></div>";
+            if(!res.ok) return document.body.innerHTML = "<div class='flex flex-col items-center justify-center h-screen px-4 text-center'><h1 class='text-2xl md:text-3xl font-black text-zinc-600 uppercase tracking-widest mb-2'>Link Inactive</h1><p class='text-zinc-500 text-sm md:text-base'>This gallery has been archived or does not exist.</p></div>";
             
             const data = await res.json();
             projectData = data.project;
+            isSubmitted = projectData[5] === 'submitted'; 
+            
             document.getElementById('cn').innerText = projectData[1].toUpperCase();
             limit = projectData[2];
             document.getElementById('sel-limit').innerText = limit;
             photos = data.photos; 
             
+            if(isSubmitted) document.getElementById('submitted-banner').classList.remove('hidden');
+            
             updateCounter();
-            switchTab('raw'); // Initialize tab rendering safely
+            switchTab('raw'); 
         }
 
         function updateCounter() {
             selectedCount = photos.filter(p => p.selected && !p.edited).length;
             const countEl = document.getElementById('sel-count');
             countEl.innerText = selectedCount;
-            countEl.className = selectedCount >= limit ? "font-bold text-green-400 text-lg" : "font-bold text-white text-lg";
+            countEl.className = selectedCount >= limit ? "font-bold text-green-400 text-xl md:text-lg" : "font-bold text-white text-xl md:text-lg";
+            
+            const actionBar = document.getElementById('action-bar');
+            if (selectedCount > 0 && !isSubmitted && mode === 'raw') {
+                actionBar.classList.remove('translate-y-full');
+            } else {
+                actionBar.classList.add('translate-y-full');
+            }
         }
 
         async function toggleSelect(db_id) {
-            if (mode === 'edited') return;
+            if (mode === 'edited' || isSubmitted) return; 
+            
             const photo = photos.find(p => p.db_id === db_id);
             if (!photo.selected && selectedCount >= limit) {
                 alert(`You have reached your limit of ${limit} photos.`);
@@ -82,33 +125,66 @@
             const filtered = photos.filter(p => mode === 'edited' ? p.edited : !p.edited);
             
             if(filtered.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-32 text-center text-zinc-600 font-bold tracking-widest text-sm uppercase">No photos available yet.</div>`;
+                grid.innerHTML = `<div class="col-span-full py-32 text-center text-zinc-600 font-bold tracking-widest text-sm uppercase px-4">No photos available yet.</div>`;
             }
 
             filtered.forEach(p => {
                 const div = document.createElement('div');
-                div.className = `relative group aspect-square bg-zinc-900 rounded-xl overflow-hidden cursor-pointer border-4 transition-all ${p.selected && mode === 'raw' ? 'border-green-500 scale-[0.98]' : 'border-transparent hover:border-zinc-700'}`;
+                const submittedStyle = (isSubmitted && !p.selected && mode === 'raw') ? 'opacity-30' : '';
+                
+                div.className = `relative group aspect-square bg-zinc-900 rounded-xl overflow-hidden ${!isSubmitted ? 'cursor-pointer' : ''} border-4 transition-all ${p.selected && mode === 'raw' ? 'border-green-500 scale-[0.96]' : 'border-transparent hover:border-zinc-700'} ${submittedStyle}`;
                 div.onclick = () => toggleSelect(p.db_id);
 
                 div.innerHTML = `
                     <img src="${p.url}" class="w-full h-full object-cover">
                     ${mode === 'raw' ? `
-                        <div class="absolute top-3 right-3 w-8 h-8 rounded-full border-2 border-white flex items-center justify-center transition-colors ${p.selected ? 'bg-green-500 border-green-500' : 'bg-black/40'}">
-                            ${p.selected ? '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                        <div class="absolute top-2 md:top-3 right-2 md:right-3 w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white flex items-center justify-center transition-colors ${p.selected ? 'bg-green-500 border-green-500' : 'bg-black/40'}">
+                            ${p.selected ? '<svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>' : ''}
                         </div>
                     ` : ''}
-                    <a href="https://drive.google.com/uc?export=download&id=${p.id}" download onclick="event.stopPropagation()" class="absolute bottom-3 right-3 bg-white/90 text-black px-3 py-1.5 text-[10px] rounded-lg opacity-0 group-hover:opacity-100 font-black hover:bg-white transition shadow-lg">
-                        SAVE
-                    </a>
                 `;
                 grid.appendChild(div);
             });
         }
 
+        function togglePreview(show) {
+            const mainView = document.getElementById('main-view');
+            const previewView = document.getElementById('preview-view');
+            const actionBar = document.getElementById('action-bar');
+            
+            if (show) {
+                mainView.classList.add('hidden');
+                actionBar.classList.add('translate-y-full'); 
+                previewView.classList.remove('hidden');
+                
+                const previewGrid = document.getElementById('preview-gallery');
+                previewGrid.innerHTML = photos.filter(p => p.selected && !p.edited).map(p => `
+                    <div class="aspect-square bg-zinc-900 rounded-lg overflow-hidden border-2 border-green-500">
+                        <img src="${p.url}" class="w-full h-full object-cover">
+                    </div>
+                `).join('');
+                window.scrollTo(0,0);
+            } else {
+                mainView.classList.remove('hidden');
+                previewView.classList.add('hidden');
+                updateCounter(); 
+            }
+        }
+
+        async function submitSelections() {
+            if(!confirm("Are you sure? This will lock your choices and notify the photographer.")) return;
+            
+            await fetch('/api/submit-selections', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: secret })
+            });
+            window.location.reload();
+        }
+
         function switchTab(newMode) {
             mode = newMode;
-            document.getElementById('rb').className = mode === 'raw' ? 'px-6 py-2 rounded-lg text-xs font-bold bg-white text-black transition shadow-sm' : 'px-6 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition';
-            document.getElementById('eb').className = mode === 'edited' ? 'px-6 py-2 rounded-lg text-xs font-bold bg-white text-black transition shadow-sm' : 'px-6 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition';
+            document.getElementById('rb').className = mode === 'raw' ? 'flex-1 md:flex-none px-4 md:px-6 py-3 md:py-2 rounded-lg text-sm md:text-xs font-bold bg-white text-black transition shadow-sm' : 'flex-1 md:flex-none px-4 md:px-6 py-3 md:py-2 rounded-lg text-sm md:text-xs font-bold text-zinc-400 hover:text-white transition bg-transparent';
+            document.getElementById('eb').className = mode === 'edited' ? 'flex-1 md:flex-none px-4 md:px-6 py-3 md:py-2 rounded-lg text-sm md:text-xs font-bold bg-white text-black transition shadow-sm' : 'flex-1 md:flex-none px-4 md:px-6 py-3 md:py-2 rounded-lg text-sm md:text-xs font-bold text-zinc-400 hover:text-white transition bg-transparent';
             
             document.getElementById('counter-box').style.opacity = mode === 'raw' ? '1' : '0.2';
             
@@ -119,16 +195,13 @@
 
             if (mode === 'edited' && projectData && projectData[3]) {
                 dlLink.href = `https://drive.google.com/drive/folders/${projectData[3]}`;
-                dlLink.innerText = "↓ DOWNLOAD ALL EDITS (ZIP)";
-                dlLink.className = "bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black tracking-widest hover:bg-blue-500 transition shadow-lg shadow-blue-900/50";
             } else if (mode === 'raw' && projectData && projectData[4]) {
                 dlLink.href = `https://drive.google.com/drive/folders/${projectData[4]}`;
-                dlLink.innerText = "↓ DOWNLOAD ALL RAWS (ZIP)";
-                dlLink.className = "bg-zinc-800 text-white px-6 py-3 rounded-xl text-xs font-black tracking-widest hover:bg-zinc-700 transition shadow-lg shadow-black/50 border border-zinc-700";
             } else {
                 dlContainer.classList.add('hidden');
             }
             
+            updateCounter(); 
             render();
         }
 

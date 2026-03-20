@@ -54,7 +54,7 @@
                     
                     <div class="bg-zinc-50 p-4 rounded-2xl mb-5 border border-zinc-100">
                         <div class="flex justify-between items-center mb-3">
-                            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Client Selections</span>
+                            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Client Selections ${p.status === 'submitted' ? '(LOCKED)' : ''}</span>
                             <span class="text-sm font-black ${p.selected >= p.limit ? 'text-green-500' : 'text-zinc-800'}">${p.selected} / ${p.limit}</span>
                         </div>
                         ${p.selected > 0 ? `<button onclick="copySelections('${p.id}')" class="w-full text-[10px] text-zinc-700 font-bold border border-zinc-300 bg-white py-2 rounded-lg hover:border-black transition">📋 COPY LIGHTROOM LIST</button>` : ''}
