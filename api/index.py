@@ -94,11 +94,8 @@ def delete_project():
     if folder_id:
         drive = get_drive()
         master_id = os.getenv("MASTER_FOLDER_ID")
-        try: 
-            # Try to permanently delete
-            drive.files().delete(fileId=folder_id[0], supportsAllDrives=True).execute()
+        try: drive.files().delete(fileId=folder_id[0], supportsAllDrives=True).execute()
         except: 
-            # Fallback: Eject the folder from the Master Folder so it disappears from the Dashboard
             try: drive.files().update(fileId=folder_id[0], removeParents=master_id, supportsAllDrives=True).execute()
             except: pass
             
@@ -138,7 +135,8 @@ def sync():
         cur.execute("SELECT edited_folder_id FROM projects WHERE id = %s", (p_id,))
         target_id = cur.fetchone()[0]
     
-    files = drive.files().list(q=f"'{target_id}' in parents and mimeType contains 'image/' and trashed = false", fields="files(id, thumbnailLink, name)").execute().get('files', [])
+    query = f"'{target_id}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false"
+    files = drive.files().list(q=query, fields="files(id, thumbnailLink, name, mimeType)").execute().get('files', [])
     
     if is_edited: cur.execute("UPDATE photos SET is_latest = FALSE WHERE project_id = %s AND is_edited = TRUE", (p_id,))
     
@@ -146,7 +144,8 @@ def sync():
     for f in files:
         cur.execute("SELECT id FROM photos WHERE project_id = %s AND file_name = %s AND is_edited = %s", (p_id, f['name'], is_edited))
         if not cur.fetchone():
-            cur.execute("INSERT INTO photos (project_id, drive_id, thumbnail_url, is_edited, file_name) VALUES (%s,%s,%s,%s,%s)", (p_id, f['id'], f['thumbnailLink'], is_edited, f['name']))
+            cur.execute("INSERT INTO photos (project_id, drive_id, thumbnail_url, is_edited, file_name, mime_type) VALUES (%s,%s,%s,%s,%s,%s)", 
+                        (p_id, f['id'], f.get('thumbnailLink', ''), is_edited, f['name'], f.get('mimeType', 'image/jpeg')))
             added += 1
     conn.commit()
     return jsonify({"status": "success", "added": added})
@@ -159,8 +158,8 @@ def get_gallery():
     proj = cur.fetchone()
     if not proj: return jsonify({"error": "Link Inactive or Invalid"}), 404
     
-    cur.execute("SELECT id, drive_id, thumbnail_url, is_edited, is_selected, file_name FROM photos WHERE project_id = %s AND is_latest = TRUE", (proj[0],))
-    photos = [{"db_id": r[0], "id": r[1], "url": r[2], "edited": r[3], "selected": r[4], "name": r[5]} for r in cur.fetchall()]
+    cur.execute("SELECT id, drive_id, thumbnail_url, is_edited, is_selected, file_name, mime_type FROM photos WHERE project_id = %s AND is_latest = TRUE", (proj[0],))
+    photos = [{"db_id": r[0], "id": r[1], "url": r[2], "edited": r[3], "selected": r[4], "name": r[5], "mime_type": r[6]} for r in cur.fetchall()]
     return jsonify({"project": proj, "photos": photos})
 
 @app.route('/api/toggle-selection', methods=['POST'])

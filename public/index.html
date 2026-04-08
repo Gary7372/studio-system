@@ -92,7 +92,7 @@
         }
 
         async function deleteProject(pId) {
-            if(!confirm("Are you sure? This deletes the project from the dashboard and ejects the Drive folder.")) return;
+            if(!confirm("Are you sure? This removes the project from the dashboard and ejects the Drive folder.")) return;
             await fetch('/api/delete-project', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: pId }) });
             load(currentViewIsArchived);
         }
@@ -107,7 +107,7 @@
         async function syncProjectFiles(pId, fId, isEdited) {
             const btn = event.target; const origText = btn.innerText; btn.innerText = "SYNCING...";
             const res = await fetch('/api/sync-drive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: pId, f_id: fId, is_edited: isEdited }) });
-            const data = await res.json(); alert(`Synced! Added ${data.added} new photos.`); btn.innerText = origText; load(currentViewIsArchived);
+            const data = await res.json(); alert(`Synced! Added ${data.added} new files.`); btn.innerText = origText; load(currentViewIsArchived);
         }
 
         async function copySelections(pId) {
