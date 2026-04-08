@@ -157,9 +157,6 @@
                 const icon = p.locked ? '🔒' : '<svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>';
                 const videoBadge = isVideo ? `<div class="absolute top-2 left-2 bg-black/80 text-white text-[9px] font-black px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1 tracking-widest"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6V4z"></path></svg> VIDEO</div>` : '';
                 const viewLink = `https://drive.google.com/file/d/${p.id}/view`;
-
-                // FIX: Generate a permanent Google Drive thumbnail using the file ID instead of the expired URL
-                // Added loading="lazy" for massive performance boost
                 const permanentImageUrl = `https://drive.google.com/thumbnail?id=${p.id}&sz=w800`;
 
                 div.innerHTML = `
@@ -178,7 +175,7 @@
                     
                     <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 pointer-events-none">
                         <a href="${viewLink}" target="_blank" onclick="event.stopPropagation()" class="bg-white/95 text-black px-4 py-2 text-[10px] md:text-xs rounded-lg font-black hover:bg-white transition shadow-lg pointer-events-auto transform hover:scale-105 duration-200">
-                            ${isVideo ? '▶ PLAY VIDEO' : 'VIEW / SAVE'}
+                            ${isVideo ? '▶ PLAY VIDEO' : 'VIEW'}
                         </a>
                     </div>
                 `;
@@ -196,7 +193,6 @@
                 actionBar.classList.add('translate-y-full'); 
                 previewView.classList.remove('hidden');
                 
-                // FIX: Apply permanent thumbnail to preview grid as well
                 const previewGrid = document.getElementById('preview-gallery');
                 previewGrid.innerHTML = photos.filter(p => p.selected && !p.locked && !p.edited).map(p => `
                     <div class="relative aspect-square bg-zinc-900 rounded-lg overflow-hidden border-2 border-green-500">
