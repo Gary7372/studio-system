@@ -158,8 +158,12 @@
                 const videoBadge = isVideo ? `<div class="absolute top-2 left-2 bg-black/80 text-white text-[9px] font-black px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1 tracking-widest"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6V4z"></path></svg> VIDEO</div>` : '';
                 const viewLink = `https://drive.google.com/file/d/${p.id}/view`;
 
+                // FIX: Generate a permanent Google Drive thumbnail using the file ID instead of the expired URL
+                // Added loading="lazy" for massive performance boost
+                const permanentImageUrl = `https://drive.google.com/thumbnail?id=${p.id}&sz=w800`;
+
                 div.innerHTML = `
-                    <img src="${p.url}" class="w-full h-full object-cover">
+                    <img src="${permanentImageUrl}" loading="lazy" class="w-full h-full object-cover">
                     ${videoBadge}
                     
                     <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 to-transparent p-3 pt-8 pointer-events-none">
@@ -192,10 +196,11 @@
                 actionBar.classList.add('translate-y-full'); 
                 previewView.classList.remove('hidden');
                 
+                // FIX: Apply permanent thumbnail to preview grid as well
                 const previewGrid = document.getElementById('preview-gallery');
                 previewGrid.innerHTML = photos.filter(p => p.selected && !p.locked && !p.edited).map(p => `
                     <div class="relative aspect-square bg-zinc-900 rounded-lg overflow-hidden border-2 border-green-500">
-                        <img src="${p.url}" class="w-full h-full object-cover">
+                        <img src="https://drive.google.com/thumbnail?id=${p.id}&sz=w800" loading="lazy" class="w-full h-full object-cover">
                         ${p.mime_type && p.mime_type.includes('video') ? `<div class="absolute top-1 left-1 bg-black/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded">VIDEO</div>` : ''}
                     </div>
                 `).join('');
