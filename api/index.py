@@ -1,3 +1,6 @@
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
 import os, psycopg2, uuid, textwrap
 from google.oauth2 import service_account
@@ -16,6 +19,39 @@ def get_drive():
     info = {"private_key": raw_key, "client_email": os.getenv("GCP_SERVICE_ACCOUNT_EMAIL"), "token_uri": "https://oauth2.googleapis.com/token"}
     creds = service_account.Credentials.from_service_account_info(info, scopes=['https://www.googleapis.com/auth/drive'])
     return build('drive', 'v3', credentials=creds)
+
+def send_email_notification(client_name):
+    sender = os.getenv("SMTP_EMAIL")
+    password = os.getenv("SMTP_PASSWORD")
+    receiver = os.getenv("NOTIFICATION_EMAIL")
+    
+    if not sender or not password or not receiver:
+        print("Email credentials missing. Skipping notification.")
+        return
+
+    msg = MIMEMultipart()
+    msg['From'] = f"Gulugulu System <{sender}>"
+    msg['To'] = receiver
+    msg['Subject'] = f"📸 NEW SELECTIONS: {client_name}"
+    
+    body = f"""Great news!
+    
+{client_name} has just reviewed, confirmed, and submitted their photo selections.
+
+Their gallery is now locked. You can log into the Admin Dashboard, copy their Lightroom list, and begin editing!
+
+- The Intelligent Studio Ecosystem
+"""
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender, password)
+        server.sendmail(sender, receiver, msg.as_string())
+        server.quit()
+    except Exception as e:
+        print(f"Failed to send email notification: {e}")
 
 @app.route('/api/create-project', methods=['POST'])
 def create():
@@ -174,8 +210,13 @@ def toggle_selection():
 def submit_selections():
     secret = request.json['secret']
     conn = get_db(); cur = conn.cursor()
-    cur.execute("UPDATE projects SET status = 'submitted' WHERE client_secret = %s", (secret,))
+    cur.execute("UPDATE projects SET status = 'submitted' WHERE client_secret = %s RETURNING client_name", (secret,))
+    result = cur.fetchone()
     conn.commit()
+    
+    if result:
+        send_email_notification(result[0])
+        
     return jsonify({"status": "success"})
 
 @app.route('/api/get-selections', methods=['GET'])
